@@ -21,7 +21,7 @@ else
     if ! command -v zsh &> /dev/null; then
         echo "未安装zsh"
         # 安装zsh
-        apt install zsh
+        apt install zsh -y
     else
         echo "已安装zsh"
         # 切换为zsh
