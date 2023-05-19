@@ -17,6 +17,7 @@ else
   echo "OpenSSH 安装完成"
 fi
 #建立密钥对
+ssh-keygen
 
 #安装公钥
 cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
