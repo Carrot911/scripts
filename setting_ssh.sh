@@ -31,7 +31,7 @@ fi
 
   
 #建立密钥对
-ssh-keygen
+ssh-keygen -t rsa -N "" -f $HOME/.ssh/id_rsa
 
 #安装公钥
 cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
