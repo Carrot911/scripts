@@ -2,7 +2,7 @@
 
 #检查是否安装sudo
 if [ -x "$(command -v sudo)" ]; then
-  echo "Sudo已安装"
+  echo "Sudo 已经安装"
 else
   echo "Sudo 未安装，开始安装..."
   #安装Sudo
@@ -52,15 +52,15 @@ sudo sed -i 's/^PermitRootLogin.*$/PermitRootLogin prohibit-password/' /etc/ssh/
 # 重新加载 SSH 配置
 sudo service ssh reload
 
-# 导出公钥到当前目录
+# 导出私钥到当前目录
 if [ ! -d "$HOME/.ssh" ]; then
     mkdir $HOME/.ssh
 fi
 
-if [ ! -f "$HOME/.ssh/id_rsa.pub" ]; then
+if [ ! -f "$HOME/.ssh/id_rsa" ]; then
     ssh-keygen -t rsa -N "" -f $HOME/.ssh/id_rsa
 fi
 
-cp $HOME/.ssh/id_rsa.pub .
+cp $HOME/.ssh/id_rsa .
 
-echo "SSH 登录方式已配置为密钥登录，root 用户的密码登录已被禁用，公钥已导出到 $(pwd)/id_rsa.pub"
+echo "SSH 登录方式已配置为密钥登录，root 用户的密码登录已被禁用，密钥已导出到 $(pwd)/id_rsa.pub"
