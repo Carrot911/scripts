@@ -1,5 +1,16 @@
 #!/bin/bash
 
+#检查是否安装sudo
+if [ -x "$(command -v sudo)" ]; then
+  echo "Sudo已安装"
+else
+  echo "Sudo 未安装，开始安装..."
+  #安装Sudo
+  apt install sudo -y
+  
+  echo "OpenSSH 安装完成"
+fi
+
 # 检查 SSH 是否安装
 if [ -x "$(command -v ssh)" ]; then
   echo "OpenSSH 已经安装"
@@ -16,6 +27,9 @@ else
   
   echo "OpenSSH 安装完成"
 fi
+
+
+  
 #建立密钥对
 ssh-keygen
 
