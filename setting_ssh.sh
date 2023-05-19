@@ -8,7 +8,7 @@ else
   #安装Sudo
   apt install sudo -y
   
-  echo "OpenSSH 安装完成"
+  echo "Sudo 安装完成"
 fi
 
 # 检查 SSH 是否安装
