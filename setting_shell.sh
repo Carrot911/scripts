@@ -9,7 +9,7 @@ if [ -n "$ZSH_VERSION" ]; then
     if [ ! -d "$HOME/.oh-my-zsh" ]; then
         echo "未安装oh-my-zsh主题"
         # 安装oh-my-zsh主题
-        YES | sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+        yes | sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
     else
         echo "已安装oh-my-zsh主题"
     fi
@@ -32,7 +32,7 @@ else
     if [ ! -d "$HOME/.oh-my-zsh" ]; then
         echo "未安装oh-my-zsh主题"
         # 安装oh-my-zsh主题
-        YES | sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+        yes | sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
     else
         echo "已安装oh-my-zsh主题"
     fi
