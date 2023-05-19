@@ -16,6 +16,13 @@ else
   
   echo "OpenSSH 安装完成"
 fi
+#建立密钥对
+
+#安装公钥
+cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
+
+#更改权限
+chmod 600 /root/.ssh/authorized_keys
 
 # 配置 SSH 登录方式为密钥登录
 if ! grep -q "^PasswordAuthentication" /etc/ssh/sshd_config; then
