@@ -1,0 +1,16 @@
+CreamAPI 介绍：
+一个用于给买了Steam上游戏本体之后买不起DLC的玩家的学习补丁，也就是平时大家下载的正版解锁DLC的dll文件，是俄罗斯大佬制作的，其官网：官网，其解压码： cs.rin.ru 
+原理：
+
+大多数游戏的DLC其实是在游戏本体里面一起下载的（例如天际线、过山车大亨、太空工程师等），所以你只要使用这个补丁解锁DLC就可以用了。
+使用方法大致翻译：
+
+1、购买下载游戏本体。
+
+2、把游戏根目录的 steam_api64.dll 重命名为 steam_api64_o.dll。
+
+3、复制附件压缩包中的 nonlog_build 文件夹中的  steam_api64.dll 到游戏根目录。
+
+    3.1 附件压缩包中的log_build 与nonlog_build 的区别仅仅是“是否创建运行日志”，非开发者不需要。
+
+4、使用油猴插件 GetDLCInfoFromSteamDB （安装地址）在SteamDB 中对应游戏网页里创建 cream_api.ini （看下图），把 cream_api.ini  复制到游戏根目录。
