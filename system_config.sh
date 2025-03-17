@@ -81,19 +81,50 @@ get_system_info() {
     fi
     
     # 运营商和IP信息
-    local ipv4_address=$(curl -s https://api.ipify.org 2>/dev/null || echo "N/A")
+    local ipv4_address="N/A"
     local isp_info="N/A"
     local location="N/A"
-    if [ "$ipv4_address" != "N/A" ]; then
-        local ipinfo=$(curl -s "https://ipapi.co/$ipv4_address/json/" 2>/dev/null)
-        if [ $? -eq 0 ]; then
-            isp_info=$(echo "$ipinfo" | jq -r '.org' 2>/dev/null || echo "N/A")
-            location=$(echo "$ipinfo" | jq -r '.country_name + ", " + .region + ", " + .city' 2>/dev/null || echo "N/A")
+    
+    # 尝试多个API获取IP地址
+    for api in "https://api.ipify.org" "https://ifconfig.me/ip" "https://icanhazip.com"; do
+        ipv4_address=$(curl -s $api 2>/dev/null)
+        if [ -n "$ipv4_address" ] && [[ $ipv4_address =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            break
         fi
+    done
+
+    if [ "$ipv4_address" != "N/A" ]; then
+        # 尝试多个API获取ISP和位置信息
+        for api in "https://ipapi.co/$ipv4_address/json/" "https://ipinfo.io/$ipv4_address/json" "https://ip-api.com/json/$ipv4_address"; do
+            local ipinfo=$(curl -s $api 2>/dev/null)
+            if [ $? -eq 0 ] && [ -n "$ipinfo" ]; then
+                case $api in
+                    *ipapi.co*)
+                        isp_info=$(echo "$ipinfo" | jq -r '.org' 2>/dev/null || echo "N/A")
+                        location=$(echo "$ipinfo" | jq -r '.country_name + ", " + .region + ", " + .city' 2>/dev/null || echo "N/A")
+                        ;;
+                    *ipinfo.io*)
+                        isp_info=$(echo "$ipinfo" | jq -r '.org' 2>/dev/null || echo "N/A")
+                        location=$(echo "$ipinfo" | jq -r '.country + ", " + .region + ", " + .city' 2>/dev/null || echo "N/A")
+                        ;;
+                    *ip-api.com*)
+                        isp_info=$(echo "$ipinfo" | jq -r '.isp' 2>/dev/null || echo "N/A")
+                        location=$(echo "$ipinfo" | jq -r '.country + ", " + .regionName + ", " + .city' 2>/dev/null || echo "N/A")
+                        ;;
+                esac
+                [ "$isp_info" != "null" ] && [ "$location" != "null" ] && break
+            fi
+        done
+    fi
+
+    # 网络拥塞控制算法
+    local congestion_algorithm="N/A"
+    if [ -f /proc/sys/net/ipv4/tcp_congestion_control ]; then
+        congestion_algorithm=$(cat /proc/sys/net/ipv4/tcp_congestion_control 2>/dev/null || echo "N/A")
     fi
     
     # DNS地址
-    local dns_addresses=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}' | tr '\n' ' ')
+    local dns_addresses=$(cat /etc/resolv.conf 2>/dev/null | grep nameserver | awk '{print $2}' | tr '\n' ' ' || echo "N/A")
     
     # 系统时间
     local current_time=$(date "+%Y-%m-%d %I:%M %p")
@@ -319,13 +350,30 @@ manage_common_software() {
                             elif command -v pacman &> /dev/null; then
                                 sudo pacman -Sy --noconfirm zsh
                             fi
-                            # 安装 Oh My Zsh
-                            sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
                             # 设置 ZSH 为默认 shell
                             chsh -s $(which zsh)
-                            # 应用主题设置
-                            sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/' ~/.zshrc
-                            echo "ZSH 和 Oh My Zsh 安装完成，请重新登录以使用新的shell"
+                            
+                            # 检查是否已安装 Oh My Zsh
+                            if [ ! -d "$HOME/.oh-my-zsh" ]; then
+                                echo "正在安装 Oh My Zsh..."
+                                # 安装 Oh My Zsh
+                                sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+                                
+                                # 检查安装是否成功
+                                if [ -d "$HOME/.oh-my-zsh" ]; then
+                                    # 应用主题设置
+                                    if [ -f "$HOME/.zshrc" ]; then
+                                        sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/' "$HOME/.zshrc"
+                                        echo "ZSH 和 Oh My Zsh 安装完成，主题已设置为agnoster，请重新登录以使用新的shell"
+                                    else
+                                        echo "警告：未找到.zshrc文件，请手动配置Oh My Zsh主题"
+                                    fi
+                                else
+                                    echo "警告：Oh My Zsh安装可能失败，请手动检查安装状态"
+                                fi
+                            else
+                                echo "Oh My Zsh 已经安装"
+                            fi
                         elif command -v apt &> /dev/null; then
                             sudo apt update && sudo apt install -y $software
                         elif command -v yum &> /dev/null; then
@@ -368,7 +416,59 @@ manage_common_software() {
                 if [[ $uninstall_choice =~ ^[0-9]+$ ]] && [ $uninstall_choice -ge 1 ] && [ $uninstall_choice -le ${#software_list[@]} ]; then
                     local software=${software_list[$((uninstall_choice-1))]}
                     if command -v $software &> /dev/null; then
+                        # 检查系统关键依赖
+                        local critical_deps=("systemd" "bash" "login" "sudo" "ssh")
+                        local is_critical=false
+                        for dep in "${critical_deps[@]}"; do
+                            if [ "$software" = "$dep" ]; then
+                                is_critical=true
+                                break
+                            fi
+                        done
+
+                        if [ "$is_critical" = true ]; then
+                            echo "警告：$software 是系统关键组件，卸载可能导致系统无法正常工作。"
+                            read -p "确定要继续卸载吗？(y/N): " confirm
+                            if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+                                echo "已取消卸载"
+                                continue
+                            fi
+                        fi
+
+                        # 检查软件依赖关系
+                        echo "正在检查依赖关系..."
+                        local dep_check=true
+                        if command -v apt &> /dev/null; then
+                            apt-cache rdepends $software | grep -v "$software" | grep -q "^"
+                            dep_check=$?
+                        elif command -v dnf &> /dev/null; then
+                            dnf repoquery --installed --whatrequires $software | grep -q "."
+                            dep_check=$?
+                        elif command -v pacman &> /dev/null; then
+                            pacman -Qi $software | grep "Required By" | grep -q "None"
+                            dep_check=$?
+                        fi
+
+                        if [ $dep_check = 0 ]; then
+                            echo "警告：其他软件包依赖于 $software，卸载可能影响系统功能"
+                            read -p "确定要继续卸载吗？(y/N): " confirm
+                            if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+                                echo "已取消卸载"
+                                continue
+                            fi
+                        fi
+
                         echo "正在卸载 $software 及其配置文件..."
+                        # 如果是卸载zsh，需要先切换回bash
+                        if [ "$software" = "zsh" ]; then
+                            echo "切换默认shell为bash..."
+                            sudo chsh -s /bin/bash $(whoami)
+                            # 删除oh-my-zsh配置
+                            if [ -d "$HOME/.oh-my-zsh" ]; then
+                                rm -rf "$HOME/.oh-my-zsh"
+                                rm -f "$HOME/.zshrc"
+                            fi
+                        fi
                         if command -v apt &> /dev/null; then
                             sudo apt purge -y $software
                             sudo apt autoremove -y
@@ -398,43 +498,148 @@ manage_common_software() {
     done
 }
 
+# HTTPS证书管理函数
+manage_https() {
+    while true; do
+        clear
+        echo "HTTPS证书管理"
+        echo "-------------"
+        
+        # 检查是否安装了必要的工具
+        if ! command -v nginx &> /dev/null; then
+            echo "未检测到 Nginx，正在安装..."
+            if command -v apt &> /dev/null; then
+                sudo apt update && sudo apt install -y nginx
+            elif command -v yum &> /dev/null; then
+                sudo yum install -y nginx
+            elif command -v dnf &> /dev/null; then
+                sudo dnf install -y nginx
+            elif command -v pacman &> /dev/null; then
+                sudo pacman -Sy --noconfirm nginx
+            fi
+        fi
+        
+        # 检查是否安装了certbot
+        if ! command -v certbot &> /dev/null; then
+            echo "未检测到 Certbot，正在安装..."
+            if command -v apt &> /dev/null; then
+                sudo apt update && sudo apt install -y certbot python3-certbot-nginx
+            elif command -v yum &> /dev/null; then
+                sudo yum install -y certbot python3-certbot-nginx
+            elif command -v dnf &> /dev/null; then
+                sudo dnf install -y certbot python3-certbot-nginx
+            elif command -v pacman &> /dev/null; then
+                sudo pacman -Sy --noconfirm certbot certbot-nginx
+            fi
+        fi
+        
+        # 获取所有配置的网站
+        echo "检测到的网站："
+        echo "-------------"
+        local sites=($(find /etc/nginx/sites-enabled/ -type l -exec basename {} \;))
+        local i=1
+        
+        if [ ${#sites[@]} -eq 0 ]; then
+            echo "未检测到任何网站配置"
+        else
+            for site in "${sites[@]}"; do
+                # 检查是否有SSL证书
+                if grep -q "ssl_certificate" "/etc/nginx/sites-enabled/$site"; then
+                    local cert_path=$(grep "ssl_certificate" "/etc/nginx/sites-enabled/$site" | awk '{print $2}' | tr -d ';')
+                    local expiry_date=$(openssl x509 -enddate -noout -in "$cert_path" | cut -d= -f2)
+                    local expiry_epoch=$(date -d "$expiry_date" +%s)
+                    local now_epoch=$(date +%s)
+                    local days_left=$(( ($expiry_epoch - $now_epoch) / 86400 ))
+                    
+                    if [ $days_left -lt 30 ]; then
+                        echo "$i. $site (SSL证书将在 $days_left 天后过期) [需要续期]"
+                    else
+                        echo "$i. $site (SSL证书有效期还剩 $days_left 天)"
+                    fi
+                else
+                    echo "$i. $site (未启用HTTPS)"
+                fi
+                i=$((i+1))
+            done
+        fi
+        
+        echo "-------------"
+        echo "1. 为网站添加HTTPS证书"
+        echo "2. 续期已有的证书"
+        echo "0. 返回上一级"
+        echo "-------------"
+        
+        read -p "请选择操作: " choice
+        
+        case $choice in
+            1)
+                read -p "请输入域名: " domain
+                if [ -n "$domain" ]; then
+                    echo "正在为 $domain 申请SSL证书..."
+                    sudo certbot --nginx -d "$domain"
+                    echo "证书配置完成"
+                else
+                    echo "域名不能为空"
+                fi
+                ;;                
+            2)
+                echo "正在续期所有证书..."
+                sudo certbot renew
+                echo "证书续期完成"
+                ;;                
+            0)
+                break
+                ;;                
+            *)
+                echo "无效的选择"
+                ;;                
+        esac
+        
+        press_any_key
+    done
+}
+
 # 主函数
 main() {
     while true; do
         clear
         echo "1. 系统信息查询"
-        echo "2. 配置SSH安全设置"
-        echo "3. 管理常用软件"
-        echo "4. 修改系统设置"
+        echo "2. 管理常用软件"
+        echo "3. 修改系统设置"
+        echo "4. 管理HTTPS证书"
         echo "5. 退出"
         
-        read -p "请选择功能 (1-4): " choice
+        read -p "请选择功能 (1-5): " choice
         
         case $choice in
             1)
                 get_system_info
                 press_any_key
-                ;;
+                ;;                
             2)
-                configure_ssh
-                press_any_key
-                ;;
-            3)
                 manage_common_software
-                ;;
-            4)
+                ;;                
+            3)
                 while true; do
                     clear
                     echo "系统设置"
                     echo "-------------"
                     echo "1. 调整为上海时区"
                     echo "2. 设置主机名"
+                    echo "3. 配置SSH安全设置"
                     echo "-------------"
                     echo "0. 返回主菜单"
                     echo "-------------"
-                    read -p "请选择功能 (0-2): " sub_choice
+                    read -p "请选择功能 (0-3): " sub_choice
 
                     case $sub_choice in
+                        1)
+                            echo "正在设置系统时区为上海时区..."
+                            ;;                        
+                        3)
+                            configure_ssh
+                            press_any_key
+                            ;;                        
                         1)
                             echo "正在设置系统时区为上海时区..."
                             sudo ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
@@ -449,14 +654,11 @@ main() {
                         2)
                             read -p "请输入新的主机名: " new_hostname
                             if [ -n "$new_hostname" ]; then
-                                # 尝试使用hostnamectl
                                 if sudo hostnamectl set-hostname "$new_hostname" 2>/dev/null; then
                                     echo "主机名已成功修改为: $new_hostname"
                                 else
-                                    # 如果hostnamectl失败，使用传统方式
                                     echo "$new_hostname" | sudo tee /etc/hostname > /dev/null
                                     sudo hostname "$new_hostname"
-                                    # 更新hosts文件
                                     if grep -q "127.0.0.1" /etc/hosts; then
                                         sudo sed -i "s/127.0.0.1 .*/127.0.0.1       $new_hostname localhost/g" /etc/hosts
                                     else
@@ -479,6 +681,9 @@ main() {
                             ;;                        
                     esac
                 done
+                ;;            
+            4)
+                manage_https
                 ;;            
             5)
                 exit 0
