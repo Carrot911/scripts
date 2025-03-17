@@ -106,4 +106,5 @@ document.addEventListener('DOMContentLoaded', function() {
             loadingContainer.style.display = 'none';
             showError('上传过程中发生错误: ' + error.message);
         });
-    });
+    });    
+}); 
