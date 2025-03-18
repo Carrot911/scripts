@@ -1,0 +1,14 @@
+log_build\linux\x86\libsteam_api.so -> https://www.virustotal.com/gui/file/6e62891d2ee00bd70cbafa776287fa76275b1d505c1cfd22f3ef5a4a2e7d439a/detection (0/66)
+log_build\linux\x64\libsteam_api.so -> https://www.virustotal.com/gui/file/8778aa44d383cf377573c17567b46b6a0324e5827708548973107d61dce62c1e/detection (0/67)
+
+nonlog_build\linux\x86\libsteam_api.so -> https://www.virustotal.com/gui/file/5a9444608fd8bad2af02efee3aa72a13e18d89a7fd975ae75d4f2978fbc38fc7/detection (0/67)
+nonlog_build\linux\x64\libsteam_api.so -> https://www.virustotal.com/gui/file/4a41eb708f381a36f38abf3730b9f29f389086c76a89c97f4e23cd13b526525d/detection (0/67)
+
+log_build\macos\libsteam_api.dylib ----> https://www.virustotal.com/gui/file/7fc079cf1040b7632dc8fe8e06490cf99302e41e34ad419ca37c0fa924c35933/detection (0/65)
+nonlog_build\macos\libsteam_api.dylib -> https://www.virustotal.com/gui/file/13f49f08eaf3e4f48103173605793c8da1bcaa04bf6f4a3adbd0b29a6ef5c0d9/detection (0/64)
+
+nonlog_build\windows\steam_api.dll ---> https://www.virustotal.com/gui/file/23e91e44de1adbd0544a578ab80e46c968f9394e5b419240034a55a59b131675/detection (1/74)
+nonlog_build\windows\steam_api64.dll -> https://www.virustotal.com/gui/file/d00a9b72e696cf5c88a5b4bbc4d7d308f9bac51a8c4712d6b26cfd863938a25f/detection (1/72)
+
+log_build\windows\steam_api.dll ---> https://www.virustotal.com/gui/file/9b820197b719c31b8d9b362245baae66b8dbeefa726cbcdc6db53948eb270a30/detection (2/74)
+log_build\windows\steam_api64.dll -> https://www.virustotal.com/gui/file/dc5df489f5cff9c5a7541742dac5aaf02219b80decbc373f6d34d2dbcefbe69b/detection (1/74)
